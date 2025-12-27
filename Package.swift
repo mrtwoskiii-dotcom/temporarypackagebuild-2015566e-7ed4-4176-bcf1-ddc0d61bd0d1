@@ -8,7 +8,7 @@ import PackageDescription
 import AppleProductTypes
 
 let package = Package(
-    name: "InkVision",
+    name: "InkVisionPackage",
     platforms: [
         .iOS("16.0")
     ],
@@ -18,8 +18,8 @@ let package = Package(
             targets: ["AppModule"],
             bundleIdentifier: "com.example.InkVision",
             teamIdentifier: "YOUR_TEAM_ID",
-            displayVersion: "1.0.1",
-            bundleVersion: "2",
+            displayVersion: "1.0.2",
+            bundleVersion: "3",
             appIcon: .placeholder(icon: .pencil),
             accentColor: .presetColor(.green),
             supportedDeviceFamilies: [
