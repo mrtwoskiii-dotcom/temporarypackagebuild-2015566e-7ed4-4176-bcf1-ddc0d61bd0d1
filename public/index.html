@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InkVision (Free AI)</title>
+    <!-- Load TensorFlow.js (The Free AI Engine) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #status { 
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); 
+            color: #00ff00; background: rgba(0,0,0,0.7); padding: 10px 20px; 
+            border-radius: 20px; font-weight: bold; border: 1px solid #00ff00;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <video id="camera" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <div id="status">Loading AI Model...</div>
+
+    <script>
+        const video = document.getElementById('camera');
+        const canvas = document.getElementById('overlay');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
+        
+        let model = null;
+        
+        // Load Tattoo Image
+        const tattooImg = new Image();
+        tattooImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Dragon_Symbol_transparent.png/600px-Dragon_Symbol_transparent.png';
+
+        // 1. Start Camera
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+                
+                // Wait for video to load data
+                video.onloadedmetadata = () => {
+                    video.play();
+                    loadAI();
+                };
+            } catch(e) { status.innerText = "Camera Access Denied"; }
+        }
+
+        // 2. Load Free AI Model (COCO-SSD)
+        async function loadAI() {
+            status.innerText = "Downloading AI Brain...";
+            // This downloads the model to your browser once
+            model = await cocoSsd.load();
+            status.innerText = "Active. Point at a person.";
+            detectLoop();
+        }
+
+        // 3. Real-time Detection Loop
+        function detectLoop() {
+            // Predict objects in the video
+            model.detect(video).then(predictions => {
+                draw(predictions);
+                requestAnimationFrame(detectLoop); // Run again instantly
+            });
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function draw(predictions) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const scaleX = canvas.width / video.videoWidth;
+            const scaleY = canvas.height / video.videoHeight;
+            const scale = Math.max(scaleX, scaleY); 
+            
+            const offsetX = (canvas.width - video.videoWidth * scale) / 2;
+            const offsetY = (canvas.height - video.videoHeight * scale) / 2;
+
+            predictions.forEach(prediction => {
+                if (prediction.class === 'person') {
+                    const [x, y, w, h] = prediction.bbox;
+
+                    const screenX = (x * scale) + offsetX;
+                    const screenY = (y * scale) + offsetY;
+                    const screenW = w * scale;
+                    const screenH = h * scale;
+
+                    // Draw Tattoo
+                    ctx.globalCompositeOperation = 'multiply';
+                    
+                    const tatSize = Math.min(screenW, screenH) * 0.4; // Tattoo is 40% of body size
+                    const tatX = screenX + (screenW/2) - (tatSize/2);
+                    const tatY = screenY + (screenH/2) - (tatSize/2);
+                    
+                    ctx.drawImage(tattooImg, tatX, tatY, tatSize, tatSize);
+                    
+                    ctx.globalCompositeOperation = 'source-over';
+
+                    // Green Box
+                    ctx.strokeStyle = '#00ff00';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(screenX, screenY, screenW, screenH);
+                }
+            });
+        }
+
+        startCamera();
+    </script>
+</body>
+</html>
